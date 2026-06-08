@@ -49,11 +49,19 @@ model Material {
   itemNumber    String
   description   String
   unit          String
+<<<<<<< HEAD
   basePrice     Decimal
 
   laborLevel1Hours Decimal?
   laborLevel2Hours Decimal?
   laborLevel3Hours Decimal?
+=======
+  basePrice     Decimal  @db.Decimal(10, 2)
+
+  laborLevel1Hours Decimal? @db.Decimal(8, 4)
+  laborLevel2Hours Decimal? @db.Decimal(8, 4)
+  laborLevel3Hours Decimal? @db.Decimal(8, 4)
+>>>>>>> 4e133160d842599a4c8e85673e12593dc69ed2c2
 
   category      String   @default("General")
   supplier      String?
@@ -82,7 +90,11 @@ model Assembly {
   isActive      Boolean  @default(true)
   isTemporary   Boolean  @default(false)
 
+<<<<<<< HEAD
   totalCost     Decimal  @default(0)
+=======
+  totalCost     Decimal  @db.Decimal(12, 2) @default(0)
+>>>>>>> 4e133160d842599a4c8e85673e12593dc69ed2c2
 
   companyId     String
   company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -107,6 +119,7 @@ model AssemblyLineItem {
   material      Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
 
   quantityFormula String?
+<<<<<<< HEAD
   quantityValue Decimal
 
   laborLevel1Hours Decimal?
@@ -114,6 +127,15 @@ model AssemblyLineItem {
   laborLevel3Hours Decimal?
 
   lineTotal     Decimal  @default(0)
+=======
+  quantityValue Decimal  @db.Decimal(10, 4)
+
+  laborLevel1Hours Decimal? @db.Decimal(8, 4)
+  laborLevel2Hours Decimal? @db.Decimal(8, 4)
+  laborLevel3Hours Decimal? @db.Decimal(8, 4)
+
+  lineTotal     Decimal  @db.Decimal(12, 2) @default(0)
+>>>>>>> 4e133160d842599a4c8e85673e12593dc69ed2c2
 
   orderIndex    Int      @default(0)
 
@@ -141,16 +163,24 @@ model Estimate {
   lineItems     EstimateLineItem[]
   additionalCosts AdditionalCost[]
 
+<<<<<<< HEAD
   laborLevel1Rate Decimal?
   laborLevel2Rate Decimal?
   laborLevel3Rate Decimal?
   laborBurdenPercent Decimal?
+=======
+  laborLevel1Rate Decimal? @db.Decimal(10, 2)
+  laborLevel2Rate Decimal? @db.Decimal(10, 2)
+  laborLevel3Rate Decimal? @db.Decimal(10, 2)
+  laborBurdenPercent Decimal? @db.Decimal(5, 2)
+>>>>>>> 4e133160d842599a4c8e85673e12593dc69ed2c2
 
   materialOverheadPercent Decimal?
   materialProfitPercent Decimal?
   laborOverheadPercent Decimal?
   laborProfitPercent Decimal?
 
+<<<<<<< HEAD
   salesTaxPercent Decimal?
   taxCalculationMode String? @default("modeA")
 
@@ -269,3 +299,14 @@ model Settings {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+=======
+  salesTaxPercent Decimal? @db.Decimal(5, 2)
+  t
+cat > .env << 'EOF'
+PORT=3000
+NODE_ENV=development
+DATABASE_URL=file:./dev.db
+API_BASE_URL=http://localhost:3000/api
+LOG_LEVEL=info
+JWT_SECRET=your-secret-key-here-change-in-production
+>>>>>>> 4e133160d842599a4c8e85673e12593dc69ed2c2
