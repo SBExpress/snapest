@@ -1,0 +1,345 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MULTI-TENANT ARCHITECTURE
+// ============================================================================
+// Each Company is a tenant. All other models are scoped to a company.
+// This enables proper data isolation for SaaS.
+
+model Company {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  status        String   @default("active") // active, suspended, cancelled
+  subscriptionTier String @default("starter") // starter, pro, enterprise
+
+  // Relationships
+  users         User[]
+  materials     Material[]
+  assemblies    Assembly[]
+  estimates     Estimate[]
+  settings      Settings?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+}
+
+// ============================================================================
+// USERS & AUTH
+// ============================================================================
+
+model User {
+  id            String   @id @default(cuid())
+  email         String
+  password      String   // hashed
+  name          String
+  role          String   @default("estimator") // admin, estimator, viewer
+  status        String   @default("active") // active, inactive
+
+  // Company relationship
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([email, companyId]) // Email unique per company, not globally
+  @@index([companyId])
+}
+
+// ============================================================================
+// MATERIALS LIBRARY
+// ============================================================================
+// Each company has their own materials library.
+
+model Material {
+  id            String   @id @default(cuid())
+  itemNumber    String   // Item #
+  description   String
+  unit          String   // EA, LF, SQ FT, HR, etc.
+  basePrice     Decimal  @db.Decimal(10, 2) // Cost per unit
+
+  // Labor breakdown (hours per unit)
+  laborLevel1Hours Decimal? @db.Decimal(8, 4) // Apprentice
+  laborLevel2Hours Decimal? @db.Decimal(8, 4) // Journeyman
+  laborLevel3Hours Decimal? @db.Decimal(8, 4) // Foreman/Master
+
+  // Metadata
+  category      String   @default("General")
+  supplier      String?
+  isActive      Boolean  @default(true)
+  isTemporary   Boolean  @default(false) // Temp items can be promoted
+
+  // Company relationship
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Relationships to line items (for cleanup on delete)
+  estimateLineItems EstimateLineItem[]
+  assemblyLineItems AssemblyLineItem[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([itemNumber, companyId]) // Item number unique per company
+  @@index([companyId])
+  @@index([isTemporary])
+}
+
+// ============================================================================
+// ASSEMBLIES
+// ============================================================================
+// Reusable collections of materials with formulas for quantities.
+
+model Assembly {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  category      String   @default("General")
+  isActive      Boolean  @default(true)
+  isTemporary   Boolean  @default(false)
+
+  // Assembly total (calculated)
+  totalCost     Decimal  @db.Decimal(12, 2) @default(0)
+
+  // Company relationship
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Line items in this assembly
+  lineItems     AssemblyLineItem[]
+
+  // Used in estimates
+  estimateLineItems EstimateLineItem[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([isTemporary])
+}
+
+model AssemblyLineItem {
+  id            String   @id @default(cuid())
+
+  // Assembly relationship
+  assemblyId    String
+  assembly      Assembly @relation(fields: [assemblyId], references: [id], onDelete: Cascade)
+
+  // Material relationship
+  materialId    String
+  material      Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
+
+  // Quantity (can be a formula string or a number)
+  quantityFormula String? // Excel-like formula: "=5*2" or "=A1+B1"
+  quantityValue Decimal  @db.Decimal(10, 4) // Evaluated result
+
+  // Labor (hours per unit from material, or overridden here)
+  laborLevel1Hours Decimal? @db.Decimal(8, 4)
+  laborLevel2Hours Decimal? @db.Decimal(8, 4)
+  laborLevel3Hours Decimal? @db.Decimal(8, 4)
+
+  // Line total (calculated: qty * material price)
+  lineTotal     Decimal  @db.Decimal(12, 2) @default(0)
+
+  // Order in assembly
+  orderIndex    Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([assemblyId])
+  @@index([materialId])
+}
+
+// ============================================================================
+// ESTIMATES
+// ============================================================================
+// Main job cost estimates with three-screen workflow.
+
+model Estimate {
+  id            String   @id @default(cuid())
+  estimateNumber String
+  projectName   String
+  customerGC    String
+  address       String?
+  scopeSummary  String?
+  bidDueDate    DateTime?
+  status        String   @default("draft") // draft, submitted, won, lost
+  notes         String?
+
+  // Company relationship
+  companyId     String
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Line items in estimate
+  lineItems     EstimateLineItem[]
+
+  // Additional costs (permits, equipment rental, etc.)
+  additionalCosts AdditionalCost[]
+
+  // Closeout settings (can override global settings)
+  laborLevel1Rate Decimal? @db.Decimal(10, 2)
+  laborLevel2Rate Decimal? @db.Decimal(10, 2)
+  laborLevel3Rate Decimal? @db.Decimal(10, 2)
+  laborBurdenPercent Decimal? @db.Decimal(5, 2)
+
+  materialOverheadPercent Decimal? @db.Decimal(5, 2)
+  materialProfitPercent Decimal? @db.Decimal(5, 2)
+  laborOverheadPercent Decimal? @db.Decimal(5, 2)
+  laborProfitPercent Decimal? @db.Decimal(5, 2)
+
+  salesTaxPercent Decimal? @db.Decimal(5, 2)
+  taxCalculationMode String? @default("modeA") // modeA or modeB
+
+  // Totals (calculated)
+  totalMaterialCost Decimal @db.Decimal(12, 2) @default(0)
+  totalLaborCost Decimal @db.Decimal(12, 2) @default(0)
+  totalTax       Decimal  @db.Decimal(12, 2) @default(0)
+  totalAdditionalCosts Decimal @db.Decimal(12, 2) @default(0)
+  finalSellPrice Decimal  @db.Decimal(12, 2) @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([estimateNumber, companyId])
+  @@index([companyId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model EstimateLineItem {
+  id            String   @id @default(cuid())
+
+  // Estimate relationship
+  estimateId    String
+  estimate      Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  // Can be a Material or an Assembly
+  materialId    String?
+  material      Material? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+
+  assemblyId    String?
+  assembly      Assembly? @relation(fields: [assemblyId], references: [id], onDelete: SetNull)
+
+  // Quantity (can be formula or number)
+  quantityFormula String?
+  quantityValue Decimal  @db.Decimal(10, 4)
+  unit          String   // From material or manual entry
+
+  // Pricing (from material/assembly, may be adjusted)
+  materialPricePerUnit Decimal @db.Decimal(10, 2)
+
+  // Labor (from material/assembly, may be adjusted)
+  laborLevel1Hours Decimal @db.Decimal(8, 4) @default(0)
+  laborLevel2Hours Decimal @db.Decimal(8, 4) @default(0)
+  laborLevel3Hours Decimal @db.Decimal(8, 4) @default(0)
+
+  // Adjustments (Extensions tab: apply % adjustment per line)
+  materialAdjustmentPercent Decimal @db.Decimal(5, 2) @default(0)
+  laborAdjustmentPercent Decimal @db.Decimal(5, 2) @default(0)
+
+  // Calculated totals
+  materialLineTotal Decimal @db.Decimal(12, 2) @default(0)
+  laborLineTotal Decimal @db.Decimal(12, 2) @default(0)
+  markup          Decimal  @db.Decimal(5, 2) @default(0)
+  sellingPrice    Decimal  @db.Decimal(12, 2) @default(0)
+
+  // Comments/notes (shown in Audit Trail)
+  comment         String?
+
+  // Order in estimate
+  orderIndex      Int      @default(0)
+
+  // Source tracking (for Audit Trail)
+  source          String   @default("manual") // material, assembly, manual, temporary
+  isTemporary     Boolean  @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([estimateId])
+  @@index([materialId])
+  @@index([assemblyId])
+}
+
+model AdditionalCost {
+  id            String   @id @default(cuid())
+  description   String
+  amount        Decimal  @db.Decimal(12, 2)
+  applyOHnP     Boolean  @default(true)
+
+  // Estimate relationship
+  estimateId    String
+  estimate      Estimate @relation(fields: [estimateId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([estimateId])
+}
+
+// ============================================================================
+// SETTINGS
+// ============================================================================
+// Global defaults per company.
+
+model Settings {
+  id            String   @id @default(cuid())
+
+  // Company relationship (one-to-one)
+  companyId     String   @unique
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Labor settings
+  laborLevel1Name String @default("Level 1")
+  laborLevel2Name String @default("Level 2")
+  laborLevel3Name String @default("Level 3")
+
+  laborLevel1Rate Decimal @db.Decimal(10, 2) @default(0)
+  laborLevel2Rate Decimal @db.Decimal(10, 2) @default(0)
+  laborLevel3Rate Decimal @db.Decimal(10, 2) @default(0)
+
+  laborBurdenPercent Decimal @db.Decimal(5, 2) @default(30)
+  numberOfLaborLevels Int @default(3)
+
+  // Tax settings
+  materialSalesTaxPercent Decimal @db.Decimal(5, 2) @default(0)
+  taxCalculationMode String @default("modeA") // modeA or modeB
+
+  // Overhead & Profit
+  materialOverheadPercent Decimal @db.Decimal(5, 2) @default(15)
+  materialProfitPercent Decimal @db.Decimal(5, 2) @default(12)
+  laborOverheadPercent Decimal @db.Decimal(5, 2) @default(15)
+  laborProfitPercent Decimal @db.Decimal(5, 2) @default(12)
+  applyOHPToAdditionalCosts Boolean @default(true)
+
+  // Display options
+  showPerLineUnitPrice Boolean @default(false)
+  showRunningFinalPrice Boolean @default(false)
+  unitPriceIncludesAdditionalCosts Boolean @default(false)
+
+  // Miscellaneous material
+  miscMaterialPercent Decimal @db.Decimal(5, 2) @default(7)
+  miscMaterialEnabled Boolean @default(false)
+
+  // Copy takeoff defaults
+  copyTakeoffPriceSource String @default("live") // live or frozen
+  copyTakeoffIncludeTemporaryItems Boolean @default(false)
+  copyTakeoffCopyCloseoutSettings Boolean @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
