@@ -2,63 +2,85 @@ import { useState } from 'react'
 import JobDetailsScreen from './screens/JobDetailsScreen'
 import TakeoffScreen from './screens/TakeoffScreen'
 import CloseoutScreen from './screens/CloseoutScreen'
+import SettingsModal from './components/SettingsModal'
 
 type Screen = 'job-details' | 'takeoff' | 'closeout'
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('job-details')
+  const [showSettings, setShowSettings] = useState(false)
 
   const handleScreenChange = (screen: Screen) => {
     setCurrentScreen(screen)
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Top Navigation */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900">SnapEst</h1>
-          <div className="flex gap-4">
+      <header className="bg-slate-950 border-b border-blue-500/20 sticky top-0 z-20 shadow-lg">
+        <div className="px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-lg">S</span>
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+              SnapEst
+            </h1>
+          </div>
+          <div className="flex gap-2 items-center">
+            <nav className="flex gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-700/50">
+              <button
+                onClick={() => handleScreenChange('job-details')}
+                className={`px-4 py-2 rounded font-medium transition-all duration-200 ${
+                  currentScreen === 'job-details'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                Job Details
+              </button>
+              <button
+                onClick={() => handleScreenChange('takeoff')}
+                className={`px-4 py-2 rounded font-medium transition-all duration-200 ${
+                  currentScreen === 'takeoff'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                Takeoff
+              </button>
+              <button
+                onClick={() => handleScreenChange('closeout')}
+                className={`px-4 py-2 rounded font-medium transition-all duration-200 ${
+                  currentScreen === 'closeout'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                Closeout
+              </button>
+            </nav>
+
             <button
-              onClick={() => handleScreenChange('job-details')}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                currentScreen === 'job-details'
-                  ? 'bg-blue-100 text-blue-900'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              onClick={() => setShowSettings(true)}
+              className="ml-4 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-600/70 transition-all duration-200 border border-slate-600/50 font-medium"
+              title="Settings (Ctrl+,)"
             >
-              Job Details (F5)
-            </button>
-            <button
-              onClick={() => handleScreenChange('takeoff')}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                currentScreen === 'takeoff'
-                  ? 'bg-blue-100 text-blue-900'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Takeoff (F6)
-            </button>
-            <button
-              onClick={() => handleScreenChange('closeout')}
-              className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                currentScreen === 'closeout'
-                  ? 'bg-blue-100 text-blue-900'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Closeout (F7)
+              ⚙️ Settings
             </button>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="p-6">
+      <main className="p-8 max-w-full">
         {currentScreen === 'job-details' && <JobDetailsScreen />}
         {currentScreen === 'takeoff' && <TakeoffScreen />}
         {currentScreen === 'closeout' && <CloseoutScreen />}
       </main>
+
+      {/* Settings Modal */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   )
 }

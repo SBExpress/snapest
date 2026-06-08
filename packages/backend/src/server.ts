@@ -4,10 +4,11 @@ import bodyParser from 'body-parser'
 import 'dotenv/config'
 
 import { authMiddleware } from './middleware/auth.js'
-import materialsRouter from './routes/materials.js'
-import assembliesRouter from './routes/assemblies.js'
-import estimatesRouter from './routes/estimates.js'
-import settingsRouter from './routes/settings.js'
+// TODO: Uncomment routes once Prisma is initialized
+// import materialsRouter from './routes/materials.js'
+// import assembliesRouter from './routes/assemblies.js'
+// import estimatesRouter from './routes/estimates.js'
+// import settingsRouter from './routes/settings.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -25,11 +26,11 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
 })
 
-// Routes
-app.use('/api/materials', materialsRouter)
-app.use('/api/assemblies', assembliesRouter)
-app.use('/api/estimates', estimatesRouter)
-app.use('/api/settings', settingsRouter)
+// Routes (temporarily disabled - Prisma initialization issue)
+// app.use('/api/materials', materialsRouter)
+// app.use('/api/assemblies', assembliesRouter)
+// app.use('/api/estimates', estimatesRouter)
+// app.use('/api/settings', settingsRouter)
 
 // 404 handler
 app.use((req, res) => {
