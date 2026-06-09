@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useAuth } from './hooks/useAuth'
+import { useAuth } from './context/AuthContext'
 import LoginScreen from './screens/LoginScreen'
 import JobDetailsScreen from './screens/JobDetailsScreen'
 import TakeoffScreen from './screens/TakeoffScreen'
@@ -56,7 +56,7 @@ export default function App() {
                 Closeout
               </button>
             </nav>
-            <button onClick={() => setShowSettings(true)} className="ml-4 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-600/70 transition-all duration-200 border border-slate-600/50 font-medium" title="Settings (Ctrl+,)">
+            <button onClick={() => setShowSettings(true)} className="ml-4 px-4 py-2 rounded-lg bg-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-600/70 transition-all duration-200 border border-slate-600/50 font-medium">
               ⚙️ Settings
             </button>
           </div>
