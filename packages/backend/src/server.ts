@@ -25,7 +25,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRouter)
 
 // Routes with auth
-app.use('/api/jobs', jobsRouter)
+app.use('/api/jobs', authMiddleware, jobsRouter)
 app.use('/api/settings', authMiddleware, settingsRouter)
 
 // 404 handler
