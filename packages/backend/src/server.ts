@@ -5,6 +5,7 @@ import 'dotenv/config'
 
 import { authMiddleware } from './middleware/auth.js'
 import authRouter from './routes/auth.js'
+import jobsRouter from './routes/jobs.js'
 import settingsRouter from './routes/settings.js'
 
 const app = express()
@@ -24,6 +25,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRouter)
 
 // Routes with auth
+app.use('/api/jobs', jobsRouter)
 app.use('/api/settings', authMiddleware, settingsRouter)
 
 // 404 handler
