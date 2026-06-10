@@ -1,162 +1,68 @@
 import express, { Request, Response } from 'express'
-import { prisma } from '../db/client.js'
-import { authMiddleware } from '../middleware/auth.js'
+import { PrismaClient } from '@prisma/client'
 
 const router = express.Router()
+const prisma = new PrismaClient()
 
-// Get all jobs for the company
-router.get('/', authMiddleware, async (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { company: true },
-    })
-
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
-    const jobs = await prisma.job.findMany({
-      where: { companyId: user.companyId },
-      orderBy: { updatedAt: 'desc' },
-    })
-
-    res.json({ jobs })
+    const companyId = (req as any).companyId
+    const jobs = await prisma.job.findMany({ where: { companyId }, orderBy: { createdAt: 'desc' } })
+    res.json({ success: true, jobs })
   } catch (err) {
-    console.error('Error fetching jobs:', err)
-    res.status(500).json({ error: 'Failed to fetch jobs' })
+    console.error(err)
+    res.status(500).json({ error: 'Failed to list jobs' })
   }
 })
 
-// Create new job
-router.post('/', authMiddleware, async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId
+    const companyId = (req as any).companyId
     const { name, description } = req.body
-
-    if (!name) {
-      return res.status(400).json({ error: 'Job name is required' })
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { company: true },
-    })
-
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
-    const job = await prisma.job.create({
-      data: {
-        name,
-        description: description || '',
-        companyId: user.companyId,
-      },
+    const job = await prisma.job.create({ data: { name, description: description || '', status: 'Draft', companyId } })
     res.json({ success: true, job })
-
-    const job = await prisma.job.findUnique({ where: { id } }); res.json({ success: true, job })
   } catch (err) {
-    console.error('Error creating job:', err)
+    console.error(err)
     res.status(500).json({ error: 'Failed to create job' })
   }
 })
 
-// Get specific job
-router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId
+    const companyId = (req as any).companyId
     const { id } = req.params
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { company: true },
-    })
-
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
-    const job = await prisma.job.findFirst({
-      where: {
-        id,
-        companyId: user.companyId,
-      },
-    })
-
-    if (!job) {
-      return res.status(404).json({ error: 'Job not found' })
-    }
-
-    res.json({ job })
+    const job = await prisma.job.findFirst({ where: { id, companyId } })
+    res.json({ success: true, job })
   } catch (err) {
-    console.error('Error fetching job:', err)
-    res.status(500).json({ error: 'Failed to fetch job' })
+    console.error(err)
+    res.status(500).json({ error: 'Failed' })
   }
 })
 
-// Update job
-router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId
+    const companyId = (req as any).companyId
     const { id } = req.params
     const { name, description, status } = req.body
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { company: true },
-    })
-
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
-    const updated = await prisma.job.updateMany({
-      where: {
-        id,
-        companyId: user.companyId,
-      },
-      data: {
-        ...(name && { name }),
-        ...(description !== undefined && { description }),
-        ...(status && { status }),
-      },
-    })
-
-    const job = await prisma.job.findUnique({ where: { id } }); res.json({ success: true, job })
+    const job = await prisma.job.findFirst({ where: { id, companyId } })
+    const updated = await prisma.job.update({ where: { id }, data: { ...(name && { name }), ...(description !== undefined && { description }), ...(status && { status }) } })
+    res.json({ success: true, job: updated })
   } catch (err) {
-    console.error('Error updating job:', err)
-    res.status(500).json({ error: 'Failed to update job' })
+    console.error(err)
+    res.status(500).json({ error: 'Failed' })
   }
 })
 
-// Delete job
-router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId
+    const companyId = (req as any).companyId
     const { id } = req.params
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { company: true },
-    })
-
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' })
-    }
-
-    await prisma.job.deleteMany({
-      where: {
-        id,
-        companyId: user.companyId,
-      },
-    })
-
+    const job = await prisma.job.findFirst({ where: { id, companyId } })
+    await prisma.job.delete({ where: { id } })
     res.json({ success: true })
   } catch (err) {
-    console.error('Error deleting job:', err)
-    res.status(500).json({ error: 'Failed to delete job' })
+    console.error(err)
+    res.status(500).json({ error: 'Failed' })
   }
 })
 
