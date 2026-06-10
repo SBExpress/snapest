@@ -1,4 +1,5 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'
 
 export interface Job {
   id: string
@@ -22,6 +23,7 @@ interface JobContextType {
 const JobContext = createContext<JobContextType | undefined>(undefined)
 
 export function JobProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth()
   const [jobs, setJobs] = useState<Job[]>([])
   const [currentJob, setCurrentJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(false)
@@ -29,28 +31,21 @@ export function JobProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     fetchJobs()
-  }, [])
+  }, [user])
 
   const fetchJobs = async () => {
     try {
       setLoading(true)
       const token = localStorage.getItem('auth_token')
-      if (!token) return
-
-      const res = await fetch('/api/jobs', {
-        headers: { 'Authorization': `Bearer ${token}` },
-      })
-
+      if (!token || !user) return
+      const res = await fetch('/api/jobs', { headers: { Authorization: `Bearer ${token}`, 'x-company-id': user.companyId } })
       if (res.ok) {
         const data = await res.json()
-        setJobs(data.jobs)
-        if (data.jobs.length > 0 && !currentJob) {
-          setCurrentJob(data.jobs[0])
-        }
+        setJobs(data.jobs || [])
+        if (data.jobs?.length && !currentJob) setCurrentJob(data.jobs[0])
       }
     } catch (err) {
-      console.error('Error fetching jobs:', err)
-      setError('Failed to load jobs')
+      console.error('Fetch jobs error:', err)
     } finally {
       setLoading(false)
     }
@@ -59,17 +54,8 @@ export function JobProvider({ children }: { children: ReactNode }) {
   const createJob = async (name: string, description?: string): Promise<Job | null> => {
     try {
       const token = localStorage.getItem('auth_token')
-      if (!token) return null
-
-      const res = await fetch('/api/jobs', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, description }),
-      })
-
+      if (!token || !user) return null
+      const res = await fetch('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-company-id': user.companyId }, body: JSON.stringify({ name, description }) })
       if (res.ok) {
         const data = await res.json()
         const newJob = data.job
@@ -78,30 +64,21 @@ export function JobProvider({ children }: { children: ReactNode }) {
         return newJob
       }
     } catch (err) {
-      console.error('Error creating job:', err)
-      setError('Failed to create job')
+      console.error('Create job error:', err)
     }
     return null
   }
 
   const selectJob = (jobId: string) => {
     const job = jobs.find(j => j.id === jobId)
-    if (job) {
-      setCurrentJob(job)
-    }
+    if (job) setCurrentJob(job)
   }
 
-  return (
-    <JobContext.Provider value={{ jobs, currentJob, loading, error, createJob, selectJob, fetchJobs }}>
-      {children}
-    </JobContext.Provider>
-  )
+  return <JobContext.Provider value={{ jobs, currentJob, loading, error, createJob, selectJob, fetchJobs }}>{children}</JobContext.Provider>
 }
 
 export function useJobs() {
   const context = useContext(JobContext)
-  if (!context) {
-    throw new Error('useJobs must be used within JobProvider')
-  }
+  if (!context) throw new Error('useJobs must be used within JobProvider')
   return context
 }
