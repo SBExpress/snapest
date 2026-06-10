@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-
-// For MVP, we'll use a simple header-based auth (company ID + API key)
-// In production, use JWT tokens
+import jwt from 'jsonwebtoken'
 
 export interface AuthRequest extends Request {
   companyId?: string
@@ -17,18 +15,16 @@ export interface AuthRequest extends Request {
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    // For MVP: Accept company ID from header
-    // In production: Parse JWT from Authorization header
-    const companyId = req.headers['x-company-id'] as string
-    const userId = req.headers['x-user-id'] as string
-
-    if (!companyId) {
-      return res.status(401).json({ error: 'Missing x-company-id header' })
+    const authHeader = req.headers.authorization
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' })
     }
-
-    req.companyId = companyId
-    req.userId = userId || 'anonymous'
-
+    const token = authHeader.substring(7)
+    const secret = process.env.JWT_SECRET || 'your-secret-key'
+    const decoded = jwt.verify(token, secret) as any
+    req.userId = decoded.userId
+    req.companyId = decoded.companyId
+    req.user = decoded
     next()
   } catch (error) {
     res.status(401).json({ error: 'Unauthorized' })
