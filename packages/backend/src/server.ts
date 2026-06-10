@@ -7,6 +7,7 @@ import { authMiddleware } from './middleware/auth.js'
 import authRouter from './routes/auth.js'
 import jobsRouter from './routes/jobs.js'
 import settingsRouter from './routes/settings.js'
+import materialsRouter from './routes/materials.js'
 import takeoffsRouter from './routes/takeoffs.js'
 
 const app = express()
@@ -28,6 +29,7 @@ app.use('/api/auth', authRouter)
 // Routes with auth
 app.use('/api/jobs', authMiddleware, jobsRouter)
 app.use('/api/settings', authMiddleware, settingsRouter)
+app.use('/api/materials', authMiddleware, materialsRouter)
 app.use('/api/takeoffs', authMiddleware, takeoffsRouter)
 
 // 404 handler
