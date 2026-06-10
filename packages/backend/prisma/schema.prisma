@@ -53,6 +53,7 @@ model Job {
   company           Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
+takeoffs Takeoff[]
 }
 
 model Material {
@@ -94,4 +95,24 @@ model Settings {
   updatedAt                 DateTime  @updatedAt
 
   company                   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}model Takeoff {
+  id                String      @id @default(cuid())
+  jobId             String
+  job               Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  description       String
+  quantity          Float
+  
+  materialUM        String      @default("E")
+  materialUnitCost  Float
+  
+  laborUM           String      @default("E")
+  laborHours        Float
+  
+  notes             String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  @@index([jobId])
 }
