@@ -56,7 +56,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       },
     })
 
-    res.json({ success: true, job })
+    const job = await prisma.job.findUnique({ where: { id } }); res.json({ success: true, job })
   } catch (err) {
     console.error('Error creating job:', err)
     res.status(500).json({ error: 'Failed to create job' })
@@ -112,7 +112,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' })
     }
 
-    const job = await prisma.job.updateMany({
+    const updated = await prisma.job.updateMany({
       where: {
         id,
         companyId: user.companyId,
@@ -124,7 +124,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       },
     })
 
-    res.json({ success: true, job })
+    const job = await prisma.job.findUnique({ where: { id } }); res.json({ success: true, job })
   } catch (err) {
     console.error('Error updating job:', err)
     res.status(500).json({ error: 'Failed to update job' })
