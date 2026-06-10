@@ -54,7 +54,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         description: description || '',
         companyId: user.companyId,
       },
-    })
+    res.json({ success: true, job })
 
     const job = await prisma.job.findUnique({ where: { id } }); res.json({ success: true, job })
   } catch (err) {
